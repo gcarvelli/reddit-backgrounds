@@ -2,6 +2,7 @@
 import requests
 import json
 import urllib.request
+import os
 import os.path
 import sys
 import urllib
@@ -12,6 +13,7 @@ clientid = keyfile.read().strip()
 keyfile.close()
 
 def main():
+    os.mkdir('images')
     with open('subreddits.txt') as f:
         
         for sub in [line.strip() for line in f if not line.isspace()]:
