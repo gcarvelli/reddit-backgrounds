@@ -17,6 +17,7 @@ def main():
     parser.add_argument('-d', action='store', dest='directory', default='images/', help='directory to download images into')
     parser.add_argument('-c', action='store', dest='config_file', default='config.json', help='config file')
     parser.add_argument('--top', '-t', action='store_true', dest='top', help='use top posts instead of new posts')
+    parser.add_argument('-p', action='store', dest='pages', type=int, default=10, help='number of pages per subreddit to scrape')
 
     args = parser.parse_args(sys.argv[1:])
 
@@ -35,6 +36,10 @@ def main():
         print('error: subreddits list missing from config')
         exit(1)
 
+    if args.pages < 1:
+        print('error: must scrape at least one page')
+        exit(1)
+
     for sub in data['subreddits']:
         if args.top:
             print('using top posts')
@@ -49,8 +54,7 @@ def main():
 
         after = None
 
-        # TODO arg for number of pages
-        for i in range(0, 10):
+        for i in range(0, args.pages):
             print('link: ' + link)
             after = crawl_page(link, sub)
             if after == None:
