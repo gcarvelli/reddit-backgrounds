@@ -12,7 +12,8 @@ import json
 global clientid
 
 def main():
-    os.mkdir('images')
+    if not os.path.exists('images'):
+        os.mkdir('images')
     keyfile = open('config.json')
     data = json.loads(keyfile.read())
     if "clientid" not in data:
