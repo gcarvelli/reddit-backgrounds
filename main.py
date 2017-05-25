@@ -1,3 +1,4 @@
+#! /usr/bin/env python3
 
 import requests
 import json
@@ -7,55 +8,67 @@ import os.path
 import sys
 import urllib
 import json
-
+import argparse
 
 global clientid
 
 def main():
-    if not os.path.exists('images'):
-        os.mkdir('images')
+    parser = argparse.ArgumentParser(prog='main.py')
+    parser.add_argument('-d', action='store', dest='directory', default='images/', help='directory to download images into')
+    parser.add_argument('-c', action='store', dest='config_file', default='config.json', help='config file')
+    parser.add_argument('--top', '-t', action='store_true', dest='top', help='use top posts instead of new posts')
+
+    args = parser.parse_args(sys.argv[1:])
+
+    if not os.path.exists(args.directory):
+        os.mkdir(args.directory)
+
     keyfile = open('config.json')
     data = json.loads(keyfile.read())
-    if "clientid" not in data:
-        print("warning: clientid field isn't in json")
+    if 'clientid' not in data:
+        print('warning: clientid field isn\'t in json')
     else:
         global clientid
-        clientid = data["clientid"]
-        print("client id: %s" % clientid)
+        clientid = data['clientid']
 
-    with open('subreddits.txt') as f:
-        
-        for sub in [line.strip() for line in f if not line.isspace()]:
-            if 'top' in sys.argv:
-                top = 'top/'
-                url_params = {'sort': 'top', 't': 'all'}
-            else:
-                top = ''
-                url_params = {}
+    if 'subreddits' not in data:
+        print('error: subreddits list missing from config')
+        exit(1)
 
+    for sub in data['subreddits']:
+        if args.top:
+            print('using top posts')
+            top = 'top/'
+            url_params = {'sort': 'top', 't': 'all'}
+        else:
+            print('using new posts')
+            top = ''
+            url_params = {}
+
+        link = 'https://www.reddit.com/r/' + sub + '/' + top + '.json' + get_params(url_params)
+
+        after = None
+
+        # TODO arg for number of pages
+        for i in range(0, 10):
+            print('link: ' + link)
+            after = crawl_page(link, sub)
+            if after == None:
+                break
+            url_params['count'] = 25
+            url_params['after'] = 't3_' + after
             link = 'https://www.reddit.com/r/' + sub + '/' + top + '.json' + get_params(url_params)
-
-            after = None
-
-            for i in range(0, 10):
-                print('link: ' + link)
-                after = crawl_page(link, sub)
-                if after == None:
-                    break
-                url_params['count'] = 25
-                url_params['after'] = 't3_' + after
-                link = 'https://www.reddit.com/r/' + sub + '/' + top + '.json' + get_params(url_params)
 
 def crawl_page(link, sub):
 
     page = get_and_decode_json(link)
 
     #print(link)
-    
+
     posts = page['data']['children']
 
     posts = [post for post in posts if not sub in post['data']['domain']]
-    
+
     image_links = {}
     after = None
 
@@ -162,7 +175,7 @@ def timeout(func, args=(), kwargs={}, timeout_duration=1, default=None):
         raise TimeoutError()
 
     # set the timeout handler
-    signal.signal(signal.SIGALRM, handler) 
+    signal.signal(signal.SIGALRM, handler)
     signal.alarm(timeout_duration)
     try:
         result = func(*args, **kwargs)
@@ -175,4 +188,4 @@ def timeout(func, args=(), kwargs={}, timeout_duration=1, default=None):
 
 if __name__ == '__main__':
     main()
-                
+

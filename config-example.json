@@ -1,3 +1,10 @@
 {
-    "clientid": "your imgur client id here"
+    "clientid": "your imgur client id here",
+    "subreddits": [
+        "desertporn",
+        "earthporn",
+        "skyporn",
+        "ruralporn",
+        "rustyrails"
+    ]
 }
