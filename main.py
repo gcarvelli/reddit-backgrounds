@@ -11,6 +11,8 @@ import json
 import argparse
 
 global clientid
+global args
+global stats
 
 def main():
     parser = argparse.ArgumentParser(prog='main.py')
@@ -18,8 +20,17 @@ def main():
     parser.add_argument('-c', action='store', dest='config_file', default='config.json', help='config file')
     parser.add_argument('--top', '-t', action='store_true', dest='top', help='use top posts instead of new posts')
     parser.add_argument('-p', action='store', dest='pages', type=int, default=10, help='number of pages per subreddit to scrape')
+    parser.add_argument('-v', action='store_true', dest='verbose', help='show more output')
 
+    global args
     args = parser.parse_args(sys.argv[1:])
+
+    global stats
+    stats = {
+        'pages_crawled': 0,
+        'images_downloaded': 0,
+        'images_skipped': 0
+    }
 
     if not os.path.exists(args.directory):
         os.mkdir(args.directory)
@@ -40,13 +51,16 @@ def main():
         print('error: must scrape at least one page')
         exit(1)
 
+    if args.top:
+        print('using top posts')
+    else:
+        print('using new posts')
+
     for sub in data['subreddits']:
         if args.top:
-            print('using top posts')
             top = 'top/'
             url_params = {'sort': 'top', 't': 'all'}
         else:
-            print('using new posts')
             top = ''
             url_params = {}
 
@@ -55,13 +69,18 @@ def main():
         after = None
 
         for i in range(0, args.pages):
-            print('link: ' + link)
+            print('crawling link: ' + link)
             after = crawl_page(link, sub)
             if after == None:
                 break
             url_params['count'] = 25
             url_params['after'] = 't3_' + after
             link = 'https://www.reddit.com/r/' + sub + '/' + top + '.json' + get_params(url_params)
+
+    print()
+    print('pages crawled: %d' % stats['pages_crawled'])
+    print('images downloaded: %d' % stats['images_downloaded'])
+    print('images skipped : %d (because they\'re already downloaded)' % stats['images_skipped'])
 
 def crawl_page(link, sub):
 
@@ -82,6 +101,7 @@ def crawl_page(link, sub):
             # No size, no save
             continue
 
+        # this is why we can't have nice things
         width = str(post['data']['preview']['images'][0]['source']['width'])
         height = str(post['data']['preview']['images'][0]['source']['height'])
         url = post['data']['url']
@@ -126,7 +146,8 @@ def crawl_page(link, sub):
     for id, link in image_links.items():
         filename = 'images/' + id + '.jpg'
         if not os.path.isfile(filename):
-            print('\tdownloading ' + link + '...')
+            if args.verbose:
+                print('\tdownloading ' + link + '...')
             try:
                 timeout(download_image, (link, filename), timeout_duration=10)
             except KeyboardInterrupt:
@@ -134,7 +155,9 @@ def crawl_page(link, sub):
             except Exception as e:
                 print(e)
         else:
-            print('\tskipping ' + link + ', already downloaded...')
+            if args.verbose:
+                print('\tskipping ' + link + ', already downloaded...')
+            stats['images_skipped'] += 1
 
     return after
 
@@ -147,6 +170,7 @@ def get_and_decode_json(url):
     return json.loads(request.text)
 
 def image_is_right_size(width, height):
+    # if it's big and landscape that's good enough
     return int(width) >= 1920 and int(height) >= 1080 \
         and int(width) > int(height)
 
@@ -158,6 +182,7 @@ def download_image(url, dest):
         f = open(dest, 'wb')
         f.write(d.content)
         f.close()
+        stats['images_downloaded'] += 1
 
 def get_params(d):
     string = ''
