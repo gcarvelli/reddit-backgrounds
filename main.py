@@ -111,38 +111,35 @@ def crawl_page(link, sub):
         if not image_is_right_size(width, height):
             continue
 
+        if args.verbose:
+            print('checking link ' + url)
+
         if url.endswith('.jpg') or url.endswith('.png'):
-            #print('simple image')
+            if args.verbose:
+                print('  simple image')
 
             image_links[post['data']['id']] = url
 
-        elif 'imgur' in url and 'gallery' in url:
-            #print('imgur gallery')
+        elif 'imgur' in url and '/a/' in url:
+            if args.verbose:
+                print('  imgur gallery')
+
+            album_hash = url.replace('http://imgur.com/a/', '').replace('https://imgur.com/a/', '')[:5]
 
             try:
-                imgur = get_and_decode_json(url + '.json')
+                imgur = get_and_decode_json('https://api.imgur.com/3/album/' + album_hash)
+                #TODO check for problem
                 data = imgur['data']
 
-                if 'album_images' in data:
-                    #print('multiple images in album')
-
-                    for image in data['album_images']['images']:
-                        hsh = image['hash']
-                        image_links[hsh] = 'https://imgur.com/' + hsh
-
-                else:
-                    #print('one image in album')
-
-                    hsh = data['image']['hash']
-                    #api = get_and_decode_json('https://api.imgur.com/3/album/' + str(id) + '/images')
-                    #print(api)
-                    image_links['hsh'] = 'https://imgur.com/' + hsh + '.jpg'
-            except Exception:
-                pass
-
-        #print()
+                for image in data['images']:
+                    if args.verbose:
+                        print('    found image ' + image['id'])
+                    image_links[image['id']] = image['link']
+            except Exception as e:
+                print("Exception! " + str(e))
 
     # Fetch the images
+    print()
     for id, link in image_links.items():
         filename = 'images/' + id + '.jpg'
         if not os.path.isfile(filename):
