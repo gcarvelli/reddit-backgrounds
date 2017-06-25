@@ -122,7 +122,7 @@ def crawl_page(link, sub):
 
         elif 'imgur' in url and '/a/' in url:
             if args.verbose:
-                print('  imgur gallery')
+                print('  imgur album')
 
             album_hash = url.replace('http://imgur.com/a/', '').replace('https://imgur.com/a/', '')[:5]
 
@@ -137,6 +137,14 @@ def crawl_page(link, sub):
                     image_links[image['id']] = image['link']
             except Exception as e:
                 print("Exception! " + str(e))
+        elif 'imgur' in url:
+            if args.verbose:
+                print('  imgur image')
+
+            album_hash = url.replace('http://imgur.com/', '').replace('https://imgur.com/', '')\
+                .replace('http://i.imgur.com/', '').replace('https://i.imgur.com/', '')
+
+            image_links[album_hash] = url + ".jpg"
 
     # Fetch the images
     print()
@@ -172,14 +180,23 @@ def image_is_right_size(width, height):
         and int(width) > int(height)
 
 def download_image(url, dest):
-    #f = open('images/' + str(i) + '.jpg', 'wb')
-    #f = open(dest, 'wb')
+    download_image_helper(url, dest, 10)
+
+def download_image_helper(url, dest, retries_left):
+    if (retries_left == 0):
+        print("maximum retries exceeded, stopping")
+        return
+
     d = requests.get(url, params = None, allow_redirects = False)
     if d.status_code == 200:
         f = open(dest, 'wb')
         f.write(d.content)
         f.close()
         stats['images_downloaded'] += 1
+    elif d.status_code in [301, 302]:
+        download_image_helper(d.headers['location'], dest, retries_left - 1)
+    else:
+        print("got unexpected HTTP code " + str(d.status_code))
 
 def get_params(d):
     string = ''
