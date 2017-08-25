@@ -99,6 +99,7 @@ def crawl_page(link, sub):
         #print(post['data']['url'])
         if 'preview' not in post['data']:
             # No size, no save
+            verbose("no size found, ignoring link " + url)
             continue
 
         # this is why we can't have nice things
@@ -111,18 +112,15 @@ def crawl_page(link, sub):
         if not image_is_right_size(width, height):
             continue
 
-        if args.verbose:
-            print('checking link ' + url)
+        verbose('checking link ' + url)
 
         if url.endswith('.jpg') or url.endswith('.png'):
-            if args.verbose:
-                print('  simple image')
+            verbose('  simple image')
 
             image_links[post['data']['id']] = url
 
         elif 'imgur' in url and '/a/' in url:
-            if args.verbose:
-                print('  imgur album')
+            verbose('  imgur album')
 
             album_hash = url.replace('http://imgur.com/a/', '').replace('https://imgur.com/a/', '')[:5]
 
@@ -132,27 +130,26 @@ def crawl_page(link, sub):
                 data = imgur['data']
 
                 for image in data['images']:
-                    if args.verbose:
-                        print('    found image ' + image['id'])
+                    verbose('    found image ' + image['id'])
                     image_links[image['id']] = image['link']
             except Exception as e:
                 print("Exception! " + str(e))
         elif 'imgur' in url:
-            if args.verbose:
-                print('  imgur image')
+            verbose('  imgur image')
 
             album_hash = url.replace('http://imgur.com/', '').replace('https://imgur.com/', '')\
                 .replace('http://i.imgur.com/', '').replace('https://i.imgur.com/', '')
 
             image_links[album_hash] = url + ".jpg"
+        else:
+            verbose("skipping unhandled case " + url)
 
     # Fetch the images
     print()
     for id, link in image_links.items():
         filename = 'images/' + id + '.jpg'
         if not os.path.isfile(filename):
-            if args.verbose:
-                print('\tdownloading ' + link + '...')
+            verbose('\tdownloading ' + link + '...')
             try:
                 timeout(download_image, (link, filename), timeout_duration=10)
             except KeyboardInterrupt:
@@ -160,8 +157,7 @@ def crawl_page(link, sub):
             except Exception as e:
                 print(e)
         else:
-            if args.verbose:
-                print('\tskipping ' + link + ', already downloaded...')
+            verbose('\tskipping ' + link + ', already downloaded...')
             stats['images_skipped'] += 1
 
     return after
@@ -228,6 +224,10 @@ def timeout(func, args=(), kwargs={}, timeout_duration=1, default=None):
         signal.alarm(0)
 
     return result
+
+def verbose(message):
+    if args.verbose:
+        print(message)
 
 if __name__ == '__main__':
     main()
