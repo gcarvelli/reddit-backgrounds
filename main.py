@@ -196,14 +196,7 @@ def download_image(url, dest):
     print('maximum retries exceeded, stopping')
 
 def get_params(d):
-    string = ''
-    i = 0
-    for param in d:
-        start = '?' if i == 0 else '&'
-        string += start + str(param) + '=' + str(d[param])
-        i += 1
-
-    return string
+    return '?' + str.join('&', [str(param) + '=' + str(d[param]) for param in d])
 
 def timeout(func, args=(), kwargs={}, timeout_duration=1, default=None):
     import signal
