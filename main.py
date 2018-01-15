@@ -181,23 +181,20 @@ def image_is_right_size(width, height):
         and int(width) > int(height)
 
 def download_image(url, dest):
-    download_image_helper(url, dest, 10)
+    for i in range(0, 10):
+        d = requests.get(url, params = None, allow_redirects = False)
+        if d.status_code == 200:
+            f = open(dest, 'wb')
+            f.write(d.content)
+            f.close()
+            stats['images_downloaded'] += 1
+            return
+        elif d.status_code in [301, 302]:
+            url = d.headers['location']
+        else:
+            print("got unexpected HTTP code " + str(d.status_code))
 
-def download_image_helper(url, dest, retries_left):
-    if (retries_left == 0):
-        print("maximum retries exceeded, stopping")
-        return
-
-    d = requests.get(url, params = None, allow_redirects = False)
-    if d.status_code == 200:
-        f = open(dest, 'wb')
-        f.write(d.content)
-        f.close()
-        stats['images_downloaded'] += 1
-    elif d.status_code in [301, 302]:
-        download_image_helper(d.headers['location'], dest, retries_left - 1)
-    else:
-        print("got unexpected HTTP code " + str(d.status_code))
+    print('maximum retries exceeded, stopping')
 
 def get_params(d):
     string = ''
