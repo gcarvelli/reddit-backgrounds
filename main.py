@@ -37,7 +37,7 @@ def main():
     if not os.path.exists(args.directory):
         os.mkdir(args.directory)
 
-    keyfile = open('config.json')
+    keyfile = open(args.config_file)
     data = json.loads(keyfile.read())
     if 'clientid' not in data:
         print('warning: clientid field isn\'t in json')
