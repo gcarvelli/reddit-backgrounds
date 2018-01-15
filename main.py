@@ -17,6 +17,7 @@ global stats
 
 def main():
     parser = argparse.ArgumentParser(prog='main.py')
+    parser.add_argument('--subreddits', '-s', action='store', dest='subs', required=True, help='comma-delimited list of subreddits to scrape')
     parser.add_argument('-d', action='store', dest='directory', default='images/', help='directory to download images into')
     parser.add_argument('-c', action='store', dest='config_file', default='config.json', help='config file')
     parser.add_argument('--new', '-n', action='store_true', dest='new', help='use new posts instead of top posts')
@@ -45,10 +46,6 @@ def main():
         global clientid
         clientid = data['clientid']
 
-    if 'subreddits' not in data:
-        print('error: subreddits list missing from config')
-        exit(1)
-
     if args.pages < 1:
         print('error: must scrape at least one page')
         exit(1)
@@ -58,7 +55,7 @@ def main():
     else:
         print('using top posts')
 
-    for sub in data['subreddits']:
+    for sub in args.subs.split(','):
         if args.new:
             top = ''
             url_params = {}
