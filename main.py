@@ -19,8 +19,9 @@ def main():
     parser = argparse.ArgumentParser(prog='main.py')
     parser.add_argument('-d', action='store', dest='directory', default='images/', help='directory to download images into')
     parser.add_argument('-c', action='store', dest='config_file', default='config.json', help='config file')
-    parser.add_argument('--top', '-t', action='store_true', dest='top', help='use top posts instead of new posts')
-    parser.add_argument('-p', action='store', dest='pages', type=int, default=10, help='number of pages per subreddit to scrape')
+    parser.add_argument('--new', '-n', action='store_true', dest='new', help='use new posts instead of top posts')
+    parser.add_argument('-p', action='store', dest='pages', type=int, default=10, help='number of pages per subreddit to scrape (default 10)')
+    parser.add_argument('--dry-run', action='store_true', dest='dry_run', help='list images to download but don\'t download them')
     parser.add_argument('-v', action='store_true', dest='verbose', help='show more output')
 
     global args
@@ -52,18 +53,18 @@ def main():
         print('error: must scrape at least one page')
         exit(1)
 
-    if args.top:
-        print('using top posts')
-    else:
+    if args.new:
         print('using new posts')
+    else:
+        print('using top posts')
 
     for sub in data['subreddits']:
-        if args.top:
-            top = 'top/'
-            url_params = {'sort': 'top', 't': 'all'}
-        else:
+        if args.new:
             top = ''
             url_params = {}
+        else:
+            top = 'top/'
+            url_params = {'sort': 'top', 't': 'all'}
 
         link = 'https://www.reddit.com/r/' + sub + '/' + top + '.json' + get_params(url_params)
 
@@ -87,8 +88,6 @@ def crawl_page(link, sub):
 
     page = get_and_decode_json(link)
 
-    #print(link)
-
     posts = page['data']['children']
 
     posts = [post for post in posts if not sub in post['data']['domain']]
@@ -97,7 +96,8 @@ def crawl_page(link, sub):
     after = None
 
     for post in posts:
-        #print(post['data']['url'])
+        url = post['data']['url']
+
         if 'preview' not in post['data']:
             # No size, no save
             verbose("no size found, ignoring link " + url)
@@ -106,22 +106,18 @@ def crawl_page(link, sub):
         # this is why we can't have nice things
         width = str(post['data']['preview']['images'][0]['source']['width'])
         height = str(post['data']['preview']['images'][0]['source']['height'])
-        url = post['data']['url']
-        #print(url)
         after = post['data']['id']
 
         if not image_is_right_size(width, height):
             continue
 
-        verbose('checking link ' + url)
-
         if url.endswith('.jpg') or url.endswith('.png'):
-            verbose('  simple image')
+            verbose('  found simple image ' + url)
 
             image_links[post['data']['id']] = url
 
         elif 'imgur' in url and '/a/' in url:
-            verbose('  imgur album')
+            verbose('  found imgur album ' + url)
 
             album_hash = url.replace('http://imgur.com/a/', '').replace('https://imgur.com/a/', '')[:5]
 
@@ -140,7 +136,7 @@ def crawl_page(link, sub):
             except Exception as e:
                 traceback.print_exc()
         elif 'imgur' in url:
-            verbose('  imgur image')
+            verbose('  found imgur image ' + url)
 
             album_hash = url.replace('http://imgur.com/', '').replace('https://imgur.com/', '')\
                 .replace('http://i.imgur.com/', '').replace('https://i.imgur.com/', '')
@@ -151,19 +147,22 @@ def crawl_page(link, sub):
 
     # Fetch the images
     print()
-    for id, link in image_links.items():
-        filename = 'images/' + id + '.jpg'
-        if not os.path.isfile(filename):
-            verbose('\tdownloading ' + link + '...')
-            try:
-                timeout(download_image, (link, filename), timeout_duration=10)
-            except KeyboardInterrupt:
-                raise
-            except Exception as e:
-                print(e)
-        else:
-            verbose('\tskipping ' + link + ', already downloaded...')
-            stats['images_skipped'] += 1
+    if args.dry_run:
+        print('dry run, skipping downloads')
+    else:
+        for id, link in image_links.items():
+            filename = 'images/' + id + '.jpg'
+            if not os.path.isfile(filename):
+                verbose('\tdownloading ' + link + '...')
+                try:
+                    timeout(download_image, (link, filename), timeout_duration=10)
+                except KeyboardInterrupt:
+                    raise
+                except Exception as e:
+                    print(e)
+            else:
+                verbose('\tskipping ' + link + ', already downloaded...')
+                stats['images_skipped'] += 1
 
     return after
 
