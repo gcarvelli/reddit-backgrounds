@@ -9,6 +9,7 @@ import sys
 import urllib
 import json
 import argparse
+import traceback
 
 global clientid
 global args
@@ -129,11 +130,15 @@ def crawl_page(link, sub):
                 #TODO check for problem
                 data = imgur['data']
 
+                if 'error' in data:
+                    print('error: ' + data['error'])
+                    continue
+
                 for image in data['images']:
                     verbose('    found image ' + image['id'])
                     image_links[image['id']] = image['link']
             except Exception as e:
-                print("Exception! " + str(e))
+                traceback.print_exc()
         elif 'imgur' in url:
             verbose('  imgur image')
 
