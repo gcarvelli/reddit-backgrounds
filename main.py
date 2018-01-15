@@ -66,7 +66,7 @@ def main():
             top = 'top/'
             url_params = {'sort': 'top', 't': 'all'}
 
-        link = 'https://www.reddit.com/r/' + sub + '/' + top + '.json' + get_params(url_params)
+        link = 'https://www.reddit.com/r/' + sub + '/' + top + '.json' + generate_get_params(url_params)
 
         after = None
 
@@ -77,7 +77,7 @@ def main():
                 break
             url_params['count'] = 25
             url_params['after'] = 't3_' + after
-            link = 'https://www.reddit.com/r/' + sub + '/' + top + '.json' + get_params(url_params)
+            link = 'https://www.reddit.com/r/' + sub + '/' + top + '.json' + generate_get_params(url_params)
 
     print()
     print('pages crawled: %d' % stats['pages_crawled'])
@@ -100,7 +100,7 @@ def crawl_page(link, sub):
 
         if 'preview' not in post['data']:
             # No size, no save
-            verbose("no size found, ignoring link " + url)
+            verbose(0, "no size found, ignoring link " + url)
             continue
 
         # this is why we can't have nice things
@@ -112,12 +112,12 @@ def crawl_page(link, sub):
             continue
 
         if url.endswith('.jpg') or url.endswith('.png'):
-            verbose('  found simple image ' + url)
+            verbose(1, 'found simple image ' + url)
 
             image_links[post['data']['id']] = url
 
         elif 'imgur' in url and '/a/' in url:
-            verbose('  found imgur album ' + url)
+            verbose(1, 'found imgur album ' + url)
 
             album_hash = url.replace('http://imgur.com/a/', '').replace('https://imgur.com/a/', '')[:5]
 
@@ -131,19 +131,19 @@ def crawl_page(link, sub):
                     continue
 
                 for image in data['images']:
-                    verbose('    found image ' + image['id'])
+                    verbose(2, 'found image ' + image['id'])
                     image_links[image['id']] = image['link']
             except Exception as e:
                 traceback.print_exc()
         elif 'imgur' in url:
-            verbose('  found imgur image ' + url)
+            verbose(1, 'found imgur image ' + url)
 
             album_hash = url.replace('http://imgur.com/', '').replace('https://imgur.com/', '')\
                 .replace('http://i.imgur.com/', '').replace('https://i.imgur.com/', '')
 
             image_links[album_hash] = url + ".jpg"
         else:
-            verbose("skipping unhandled case " + url)
+            verbose(0, "skipping unhandled case " + url)
 
     # Fetch the images
     print()
@@ -153,7 +153,7 @@ def crawl_page(link, sub):
         for id, link in image_links.items():
             filename = 'images/' + id + '.jpg'
             if not os.path.isfile(filename):
-                verbose('\tdownloading ' + link + '...')
+                verbose(1, 'downloading ' + link + '...')
                 try:
                     timeout(download_image, (link, filename), timeout_duration=10)
                 except KeyboardInterrupt:
@@ -161,7 +161,7 @@ def crawl_page(link, sub):
                 except Exception as e:
                     print(e)
             else:
-                verbose('\tskipping ' + link + ', already downloaded...')
+                verbose(1, 'skipping ' + link + ', already downloaded...')
                 stats['images_skipped'] += 1
 
     return after
@@ -195,7 +195,7 @@ def download_image(url, dest):
 
     print('maximum retries exceeded, stopping')
 
-def get_params(d):
+def generate_get_params(d):
     return '?' + str.join('&', [str(param) + '=' + str(d[param]) for param in d])
 
 def timeout(func, args=(), kwargs={}, timeout_duration=1, default=None):
@@ -219,9 +219,9 @@ def timeout(func, args=(), kwargs={}, timeout_duration=1, default=None):
 
     return result
 
-def verbose(message):
+def verbose(indentation, message):
     if args.verbose:
-        print(message)
+        print(('  ' * indentation) + message)
 
 if __name__ == '__main__':
     main()
