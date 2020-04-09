@@ -62,6 +62,9 @@ docs/_build/
 # PyBuilder
 target/
 
+# IDEs
+.idea
+
 # Imgur API
 clientid.txt
 config.json
